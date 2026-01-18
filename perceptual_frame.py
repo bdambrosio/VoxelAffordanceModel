@@ -79,6 +79,16 @@ RISK_TYPES: List[RiskType] = [
 
 SEVERITIES: List[Severity] = [Severity.LOW, Severity.MEDIUM, Severity.HIGH]
 
+# Ordered structure types (multi-label sigmoid)
+STRUCTURE_TYPES: List[StructureType] = [
+    StructureType.SURFACE,
+    StructureType.WALL,
+    StructureType.SLOPE,
+    StructureType.CLIFF,
+    StructureType.VOID,
+    StructureType.UNKNOWN,
+]
+
 
 # -------------------------
 # Core relational elements

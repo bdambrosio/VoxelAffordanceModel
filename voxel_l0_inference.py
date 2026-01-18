@@ -27,6 +27,7 @@ from perceptual_frame import (
     AFFORDANCE_TYPES,
     RISK_TYPES,
     SEVERITIES,
+    STRUCTURE_TYPES,
 )
 
 SEVERITY_REVERSE = {
@@ -151,7 +152,7 @@ class InferencePipeline:
             # Structure types: sigmoid over learned logits
             st_probs = torch.sigmoid(structure_logits[i])
             structure_scores = {
-                st: float(st_probs[j]) for j, st in enumerate(StructureType)
+                st: float(st_probs[j]) for j, st in enumerate(STRUCTURE_TYPES)
             }
             
             # Affordances: multi-label sigmoid + threshold

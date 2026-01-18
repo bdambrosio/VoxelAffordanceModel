@@ -27,6 +27,7 @@ from perceptual_frame import (
     AFFORDANCE_TYPES,
     RISK_TYPES,
     SEVERITIES,
+    STRUCTURE_TYPES,
 )
 
 # Configure logging with console output
@@ -53,7 +54,6 @@ if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
     root_logger.addHandler(console_handler)
 
 # Constants
-STRUCTURE_TYPES: List[StructureType] = list(StructureType)
 SEVERITY_TO_INDEX = {sev: i for i, sev in enumerate(SEVERITIES)}
 
 
