@@ -1406,7 +1406,7 @@ class CanonicalCell:
     material: Dict[str, Any]
 
 
-class Canonicalization:
+class Canonicalize:
     """
     Canonicalization of raw local_grid input into CanonicalCells.
 
@@ -1470,6 +1470,58 @@ class Canonicalization:
     }
 
     # ---- public API ----
+
+    def canonicalize_ground_truth(self, ground_truth_grid: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Canonicalize ground truth grid format (voxels list) into canonical format.
+        
+        Accepts ground truth format from training data and converts it to the same
+        canonical format as partial observations. Both can then be fed into the same NN.
+        
+        Input contract:
+          {
+            "ok": bool,
+            "radius": int,
+            "center": {"x": int, "y": int, "z": int},
+            "voxels": [
+              {
+                "x": int,
+                "y": int,
+                "z": int,
+                "name": "minecraft:block",
+                "properties": {...}  # ignored, only "name" is used
+              },
+              ...
+            ]
+          }
+        
+        Converts voxels list to cells dict format, then calls canonicalize().
+        Ground truth voxels don't have timestamps, so ts=0.0 is used.
+        
+        Returns: Same format as canonicalize() - CanonicalGrid dict.
+        """
+        if not ground_truth_grid.get("ok"):
+            raise ValueError("Ground truth grid is not ok")
+        
+        # Convert voxels list to cells dict format
+        cells = {}
+        for voxel in ground_truth_grid.get("voxels", []):
+            key = f"{voxel['x']},{voxel['y']},{voxel['z']}"
+            # Ground truth doesn't have timestamps, use 0.0
+            cells[key] = {
+                "name": voxel["name"],
+                "ts": 0.0
+            }
+        
+        # Create standard format grid
+        local_grid = {
+            "radius": ground_truth_grid["radius"],
+            "center": ground_truth_grid["center"],
+            "cells": cells
+        }
+        
+        # Use existing canonicalize method
+        return self.canonicalize(local_grid)
 
     def canonicalize(self, local_grid: Dict[str, Any]) -> Dict[str, Any]:
         """

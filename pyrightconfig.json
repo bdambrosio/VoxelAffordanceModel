@@ -2,5 +2,18 @@
   "venvPath": ".",
   "venv": "venv",
   "pythonVersion": "3.13",
-  "typeCheckingMode": "basic"
+  "typeCheckingMode": "basic",
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    "/usr/lib/**",
+    "/usr/local/lib/**",
+    "venv/**"
+  ],
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportPrivateUsage": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false
 }

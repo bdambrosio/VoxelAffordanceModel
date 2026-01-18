@@ -1,0 +1,46 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Train PerceptionModel3DCNN",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/training_harness.py",
+            "console": "integratedTerminal",
+            "args": [
+                "training_data/",
+                "--batch-size",
+                "64",
+                "--epochs",
+                "10"
+            ],
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "python": "${workspaceFolder}/venv/bin/python3",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Python: Run Inference",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/voxel_l0_inference.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--model-path",
+                "models/voxel_l0_model",
+                "--device",
+                "cuda",
+                "--boundary",
+                "8"
+            ],
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "python": "${workspaceFolder}/venv/bin/python3",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

@@ -5,9 +5,13 @@ torch>=2.9.1
 torchvision>=0.24.1
 torchaudio>=2.9.1
 
+# Training dependencies
+transformers>=4.57.1
+accelerate>=0.26.0
+wandb>=0.16.0
+
 # Optional: Additional packages currently in venv
 # (uncomment if needed)
-# transformers>=4.57.1
 # datasets>=4.5.0
 # numpy>=2.4.1
 # pandas>=2.3.3

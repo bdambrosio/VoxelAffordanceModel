@@ -36,12 +36,11 @@ class AffordanceType(str, Enum):
     STEP_FORWARD = "step_forward"
     JUMP_UP = "jump_up"
     DROP_DOWN = "drop_down"
-    TURN_SCAN = "turn_scan"
     DIG = "dig"
     SWIM = "swim"
     SURFACE = "surface"
     CROUCH = "crouch"
-    BACKTRACK = "backtrack"
+    PLACE = "place"
 
 
 class RiskType(str, Enum):
@@ -49,13 +48,38 @@ class RiskType(str, Enum):
     SUFFOCATION = "suffocation"
     DROWNING = "drowning"
     LAVA = "lava"
-    HOSTILE_DARK = "hostile_dark"
 
 
 class Severity(str, Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+
+
+# -------------------------
+# Ordered type lists for training/inference
+# -------------------------
+
+# Ordered affordance types (multi-label sigmoid + threshold)
+AFFORDANCE_TYPES: List[AffordanceType] = [
+    AffordanceType.STEP_FORWARD,
+    AffordanceType.JUMP_UP,
+    AffordanceType.DROP_DOWN,
+    AffordanceType.DIG,
+    AffordanceType.SWIM,
+    AffordanceType.SURFACE,
+    AffordanceType.CROUCH,
+    AffordanceType.PLACE,
+]
+
+RISK_TYPES: List[RiskType] = [
+    RiskType.FALL,
+    RiskType.SUFFOCATION,
+    RiskType.DROWNING,
+    RiskType.LAVA,
+]
+
+SEVERITIES: List[Severity] = [Severity.LOW, Severity.MEDIUM, Severity.HIGH]
 
 
 # -------------------------
@@ -128,10 +152,6 @@ class PerceptionFrame:
     affordances: List[Affordance] = field(default_factory=list)
     risks: List[Risk] = field(default_factory=list)
 
-    # Global qualitative context (optional but useful)
-    felt_light: Optional[str] = None      # e.g. "bright", "dim", "hostile-dark"
-    orientation_confidence: float = 1.0   # 1.0 = fully oriented, 0.0 = lost
-
     def summary(self) -> str:
         """
         Human-readable one-line summary for debugging/logging.
@@ -139,8 +159,7 @@ class PerceptionFrame:
         return (
             f"PerceptionFrame(structures={len(self.structures)}, "
             f"affordances={len(self.affordances)}, "
-            f"risks={len(self.risks)}, "
-            f"felt_light={self.felt_light})"
+            f"risks={len(self.risks)})"
         )
         # -------------------------
     # Serialization / Deserialization
@@ -155,8 +174,6 @@ class PerceptionFrame:
 
         frame = PerceptionFrame(
             timestamp=float(data["timestamp"]),
-            felt_light=data.get("felt_light"),
-            orientation_confidence=float(data.get("orientation_confidence", 1.0)),
         )
 
         for s in data.get("structures", []):
@@ -217,8 +234,6 @@ class PerceptionFrame:
 
         return {
             "timestamp": float(self.timestamp),
-            "felt_light": self.felt_light,
-            "orientation_confidence": float(self.orientation_confidence),
 
             "structures": [
                 {
@@ -253,3 +268,173 @@ class PerceptionFrame:
                 for r in self.risks
             ],
         }
+"""
+perceptual_assembler.py
+
+Deterministic assembly of a PerceptionFrame from
+per-voxel perceptual evidence.
+
+This module:
+- Groups voxels into Structures
+- Emits validated Affordances
+- Emits conservative Risks
+
+NO learning.
+NO raw grid exposure.
+NO physics simulation.
+"""
+
+import uuid
+import time
+from typing import Dict, Tuple, List
+
+from perceptual_frame import (
+    PerceptionFrame,
+    Structure,
+    Affordance,
+    Risk,
+    StructureType,
+    AffordanceType,
+    RiskType,
+    Severity,
+)
+
+
+VoxelKey = Tuple[int, int, int]
+
+
+class PerceptualAssembler:
+    def __init__(
+        self,
+        structure_threshold: float = 0.6,
+        affordance_threshold: float = 0.5,
+        risk_threshold: float = 0.5,
+    ):
+        self.structure_threshold = structure_threshold
+        self.affordance_threshold = affordance_threshold
+        self.risk_threshold = risk_threshold
+
+    # -------------------------
+    # Public API
+    # -------------------------
+
+    def assemble(
+        self,
+        voxel_labels: Dict[VoxelKey, Dict],
+    ) -> PerceptionFrame:
+        """
+        voxel_labels:
+          (dx,dy,dz) -> {
+            "structure_type_scores": {str: float},
+            "affordances": [str],
+            "risks": [{type, severity}]
+          }
+        """
+
+        structures = self._assemble_structures(voxel_labels)
+        affordances = self._assemble_affordances(voxel_labels, structures)
+        risks = self._assemble_risks(voxel_labels, structures)
+
+        return PerceptionFrame(
+            timestamp=time.time(),
+            structures=structures,
+            affordances=affordances,
+            risks=risks,
+        )
+
+    # -------------------------
+    # Structure assembly
+    # -------------------------
+
+    def _assemble_structures(
+        self,
+        voxel_labels: Dict[VoxelKey, Dict],
+    ) -> List[Structure]:
+        """
+        Extremely simple baseline:
+        - One structure per high-confidence voxel
+        - Non-mutex type scores preserved
+        """
+
+        structures: List[Structure] = []
+
+        for pos, labels in voxel_labels.items():
+            scores = {
+                StructureType(k): v
+                for k, v in labels["structure_type_scores"].items()
+                if v >= self.structure_threshold
+            }
+
+            if not scores:
+                continue
+
+            structures.append(
+                Structure(
+                    id=self._new_id("struct"),
+                    type_scores=scores,
+                    anchor=pos,
+                    extent=None,
+                    salience=max(scores.values()),
+                )
+            )
+
+        return structures
+
+    # -------------------------
+    # Affordance assembly
+    # -------------------------
+
+    def _assemble_affordances(
+        self,
+        voxel_labels: Dict[VoxelKey, Dict],
+        structures: List[Structure],
+    ) -> List[Affordance]:
+
+        affordances: List[Affordance] = []
+
+        for pos, labels in voxel_labels.items():
+            for a in labels.get("affordances", []):
+                affordances.append(
+                    Affordance(
+                        id=self._new_id("aff"),
+                        type=AffordanceType(a),
+                        target=pos,
+                        associated_structure=None,
+                        salience=1.0,
+                    )
+                )
+
+        return affordances
+
+    # -------------------------
+    # Risk assembly
+    # -------------------------
+
+    def _assemble_risks(
+        self,
+        voxel_labels: Dict[VoxelKey, Dict],
+        structures: List[Structure],
+    ) -> List[Risk]:
+
+        risks: List[Risk] = []
+
+        for pos, labels in voxel_labels.items():
+            for r in labels.get("risks", []):
+                risks.append(
+                    Risk(
+                        id=self._new_id("risk"),
+                        type=RiskType(r["type"]),
+                        severity=Severity(r["severity"]),
+                        source=pos,
+                        associated_structure=None,
+                    )
+                )
+
+        return risks
+
+    # -------------------------
+    # Utilities
+    # -------------------------
+
+    def _new_id(self, prefix: str) -> str:
+        return f"{prefix}_{uuid.uuid4().hex[:8]}"
