@@ -667,7 +667,8 @@ def train(
     # Move model to device
     model = model.to(device)
     
-    args = TrainingArguments(  # type: ignore[call-overload]
+    # pyright: ignore[reportGeneralTypeIssues]
+    args = TrainingArguments(
         output_dir=output_dir,
         per_device_train_batch_size=per_device_batch_size,
         num_train_epochs=num_epochs,

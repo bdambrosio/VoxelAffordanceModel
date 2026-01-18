@@ -38,7 +38,7 @@ class PerceptionModel3DCNN(nn.Module):
         in_channels: int = 13,          # per-voxel feature depth
         hidden_channels: int = 32,
 
-        num_structure_types: int = 8,
+        num_structure_types: int = 6,
         num_affordance_types: int = 8,
         num_risk_types: int = 4,
         num_severity: int = 3,

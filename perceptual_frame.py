@@ -26,8 +26,6 @@ class StructureType(str, Enum):
     WALL = "wall"
     SLOPE = "slope"
     CLIFF = "cliff"
-    TUNNEL = "tunnel"
-    ROOM = "room"
     VOID = "void"
     UNKNOWN = "unknown"
 
@@ -38,7 +36,7 @@ class AffordanceType(str, Enum):
     DROP_DOWN = "drop_down"
     DIG = "dig"
     SWIM = "swim"
-    SURFACE = "surface"
+    BREATHE = "breathe"
     CROUCH = "crouch"
     PLACE = "place"
 
@@ -67,7 +65,7 @@ AFFORDANCE_TYPES: List[AffordanceType] = [
     AffordanceType.DROP_DOWN,
     AffordanceType.DIG,
     AffordanceType.SWIM,
-    AffordanceType.SURFACE,
+    AffordanceType.BREATHE,
     AffordanceType.CROUCH,
     AffordanceType.PLACE,
 ]
@@ -161,6 +159,64 @@ class PerceptionFrame:
             f"affordances={len(self.affordances)}, "
             f"risks={len(self.risks)})"
         )
+    
+    def pretty_print(self) -> str:
+        """
+        LLM-friendly formatted string representation.
+        Groups by category and value for easy volume inference.
+        Omits IDs, timestamps, salience, and associated_structure.
+        """
+        from collections import defaultdict
+        
+        lines = []
+        
+        # Group structures by type (structures can have multiple types)
+        struct_by_type: Dict[StructureType, set] = defaultdict(set)
+        for s in self.structures:
+            pos_str = f"[{s.anchor[0]},{s.anchor[1]},{s.anchor[2]}]"
+            for stype in s.type_scores.keys():
+                struct_by_type[stype].add(pos_str)
+        
+        if struct_by_type:
+            lines.append("structures:")
+            for stype in sorted(struct_by_type.keys(), key=lambda x: x.value):
+                positions = sorted(struct_by_type[stype])
+                lines.append(f"  {stype.value}:")
+                for pos in positions:
+                    lines.append(f"    {pos}")
+        
+        # Group affordances by type
+        aff_by_type: Dict[AffordanceType, set] = defaultdict(set)
+        for a in self.affordances:
+            if a.target:
+                pos_str = f"[{a.target[0]},{a.target[1]},{a.target[2]}]"
+                aff_by_type[a.type].add(pos_str)
+        
+        if aff_by_type:
+            lines.append("affordances:")
+            for atype in sorted(aff_by_type.keys(), key=lambda x: x.value):
+                positions = sorted(aff_by_type[atype])
+                lines.append(f"  {atype.value}:")
+                for pos in positions:
+                    lines.append(f"    {pos}")
+        
+        # Group risks by type:severity
+        risk_by_key: Dict[str, set] = defaultdict(set)
+        for r in self.risks:
+            if r.source:
+                key = f"{r.type.value}:{r.severity.value}"
+                pos_str = f"[{r.source[0]},{r.source[1]},{r.source[2]}]"
+                risk_by_key[key].add(pos_str)
+        
+        if risk_by_key:
+            lines.append("risks:")
+            for key in sorted(risk_by_key.keys()):
+                positions = sorted(risk_by_key[key])
+                lines.append(f"  {key}:")
+                for pos in positions:
+                    lines.append(f"    {pos}")
+        
+        return "\n".join(lines) if lines else "(empty perception frame)"
         # -------------------------
     # Serialization / Deserialization
     # -------------------------

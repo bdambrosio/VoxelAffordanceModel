@@ -466,6 +466,12 @@ def main():
     print(f"\nAssembled Risks: {len(frame.risks)}")
     for (risk_type, severity), count in sorted(risk_counts.items(), key=lambda x: x[1], reverse=True):
         print(f"  {risk_type} ({severity}): {count}")
+    
+    # Print LLM-friendly format
+    print(f"\n{'='*60}")
+    print(f"LLM-FRIENDLY FORMAT")
+    print(f"{'='*60}")
+    print(frame.pretty_print())
 
 
 if __name__ == "__main__":

@@ -33,7 +33,7 @@
                 "--device",
                 "cuda",
                 "--boundary",
-                "8"
+                "1"
             ],
             "justMyCode": false,
             "env": {

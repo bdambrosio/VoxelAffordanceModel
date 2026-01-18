@@ -107,8 +107,6 @@ def get_ground_truth_labels(
         structure_scores[StructureType.SURFACE] = 1.0
     if cues.get("wall_likeness"):
         structure_scores[StructureType.WALL] = 1.0
-    if cues.get("enclosure_likeness"):
-        structure_scores[StructureType.ROOM] = 1.0
     
     # Infer VOID (air blocks)
     if "air" in name or _is_air_or_void(voxel):
@@ -129,10 +127,6 @@ def get_ground_truth_labels(
             deep_below = _get_neighbor_voxel(voxel_map, abs_x, abs_y, abs_z, 0, -2, 0)
             if _is_air_or_void(deep_below):
                 structure_scores[StructureType.CLIFF] = 0.8
-    
-    # Infer TUNNEL (enclosure + passable)
-    if cues.get("enclosure_likeness") and props.get("passable"):
-        structure_scores[StructureType.TUNNEL] = 0.6
     
     # If no structure identified, mark as UNKNOWN
     if not any(structure_scores.values()):
@@ -163,9 +157,9 @@ def get_ground_truth_labels(
     if "water" in name:
         affordances.append(AffordanceType.SWIM.value)
     
-    # SURFACE: for water, need to surface
+    # BREATHE: for water, need to surface to breathe
     if "water" in name:
-        affordances.append(AffordanceType.SURFACE.value)
+        affordances.append(AffordanceType.BREATHE.value)
     
     # CROUCH: passable but not head_clear
     if props.get("passable") and not props.get("head_clear", True):
